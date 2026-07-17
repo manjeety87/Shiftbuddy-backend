@@ -1,56 +1,58 @@
-function parseTimeParts(timeString) {
-  if (!timeString || typeof timeString !== "string") {
-    return { hour: 0, minute: 0 };
+function parseTime(time) {
+  if (!time) return null;
+
+  const [hour, minute] = time.split(":").map(Number);
+
+  if (
+    !Number.isInteger(hour) ||
+    !Number.isInteger(minute) ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59
+  ) {
+    return null;
   }
 
-  const [h, m] = timeString.split(":").map(Number);
+  return { hour, minute };
+}
 
-  return {
-    hour: Number.isFinite(h) ? h : 0,
-    minute: Number.isFinite(m) ? m : 0,
-  };
+function addOneDay(date) {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + 1);
+
+  return value.toISOString().slice(0, 10);
 }
 
 function buildIsoDateTimes(date, startTime, endTime) {
-  if (!date) {
+  const start = parseTime(startTime);
+  const end = parseTime(endTime);
+
+  if (!date || !start || !end) {
     return {
       startDateTime: null,
       endDateTime: null,
     };
   }
 
-  const [year, month, day] = date.split("-").map(Number);
-  if (!year || !month || !day) {
-    return {
-      startDateTime: null,
-      endDateTime: null,
-    };
-  }
+  const startDateTime = `${date}T${startTime}:00`;
 
-  const start = parseTimeParts(startTime);
-  const end = parseTimeParts(endTime);
+  const isOvernight =
+    end.hour * 60 + end.minute <=
+    start.hour * 60 + start.minute;
 
-  const startDate = new Date(
-    year,
-    month - 1,
-    day,
-    start.hour,
-    start.minute,
-    0,
-    0,
-  );
+  const endDate = isOvernight
+    ? addOneDay(date)
+    : date;
 
-  const endDate = new Date(year, month - 1, day, end.hour, end.minute, 0, 0);
-
-  // Overnight support
-  if (endDate <= startDate) {
-    endDate.setDate(endDate.getDate() + 1);
-  }
+  const endDateTime = `${endDate}T${endTime}:00`;
 
   return {
-    startDateTime: startDate.toISOString(),
-    endDateTime: endDate.toISOString(),
+    startDateTime,
+    endDateTime,
   };
 }
 
-module.exports = { buildIsoDateTimes };
+module.exports = {
+  buildIsoDateTimes,
+};
